@@ -1,0 +1,20 @@
+version: '3.7'
+
+services:
+  validator:
+    image: solanalabs/solana:${SOLANA_VERSION}
+    restart: always
+    entrypoint: solana-test-validator
+      --ledger /data/ledger
+      # Add other validator configuration arguments as needed
+    volumes:
+      - ./ledger:/data/ledger  # Persist the ledger data
+    ports:
+      - '8899:8899'
+      - '8900:8900'
+  explorer:
+    build:
+        context: .
+        dockerfile: ./explorer.dockerfile
+    ports:
+      - '${EXPLORER_PORT}:3000'

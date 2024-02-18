@@ -1,0 +1,2 @@
+#! /bin/sh
+docker run --net=host --rm -v ${SPE_ROOT}:/spe -v $(pwd):/opt --workdir /opt -it --entrypoint solana-keygen solanalabs/solana:${SOLANA_VERSION} "$@"

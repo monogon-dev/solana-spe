@@ -1,0 +1,118 @@
+#!bash
+set -o pipefail
+
+# Array for subcommand descriptions
+declare -A subcommands=(
+    ["account"]="Show account details"
+    ["create-account"]="Creates a new account (keypair)"
+    ["use-account"]="Configure CLIs to use this account by default for sending txs"
+    ["fund"]="Funds an existing account"
+)
+
+# Usage display function
+function display_help() {
+  echo "Usage: $0 [subcommand] [options]"
+  echo "Available subcommands:"
+  for cmd in "${!subcommands[@]}"; do
+    echo "  $cmd - ${subcommands[$cmd]}"
+  done
+}
+
+# Error handling function (can be further customized)
+function invalid_args() {
+    echo "Invalid arguments. See usage below."
+    display_help
+    exit 1
+}
+
+# Create config
+function create_config() {
+  spe-cli config set --config /spe/config/config.yml --url http://localhost:8899/ > /dev/null
+}
+
+function set_default_keypair() {
+  spe-cli config set --config /spe/config/config.yml --keypair /spe/$1 > /dev/null
+}
+
+
+# Main command dispatch
+if [[ $# -eq 0 ]]; then
+  display_help
+  exit 0
+fi
+
+subcommand=$1
+shift
+
+case "$subcommand" in
+  init)
+    create_config
+    echo "Initial config generated"
+    ;;
+  account)
+    [[ $# -eq 1 ]] || invalid_args  # Enforce correct argument count
+
+    address=$(spe-keygen pubkey /spe/accounts/$1.json | tr -d '\r')
+    if [[ -z "$address" ]] || [[ $address == *"os error"* ]]; then
+      echo "Failed to find account $1. Does it exist?"
+      exit 1
+    fi
+
+    spe-cli account $address
+    ;;
+  use-account)
+    [[ $# -eq 1 ]] || invalid_args  # Enforce correct argument count
+
+    address=$(spe-keygen pubkey /spe/accounts/$1.json | tr -d '\r')
+    if [[ -z "$address" ]] || [[ $address == *"os error"* ]]; then
+      echo "Failed to find account $1. Does it exist?"
+      exit 1
+    fi
+
+    set_default_keypair accounts/$1.json
+    echo "Now using account $1 for future transactions"
+    ;;
+  create-account)
+    [[ $# -eq 1 ]] || invalid_args  # Enforce correct argument count
+
+    # Error handling if keygen fails
+    if ! spe-keygen new -o /spe/accounts/$1.json -s --no-bip39-passphrase; then
+      echo "Account creation failed."
+      exit 1
+    fi
+    create_config
+    ;;
+
+  fund)
+    [[ $# -eq 2 ]] || invalid_args
+
+    address=$(spe-keygen pubkey /spe/accounts/$1.json | tr -d '\r')
+    if [[ -z "$address" ]] || [[ $address == *"os error"* ]]; then
+      echo "Failed to find account $1. Does it exist?"
+      exit 1
+    fi
+
+    # Improved error handling: Capture stderr with 2>&1
+    if ! result=$(spe-cli transfer --fee-payer /spe/ledger/faucet-keypair.json \
+                  --from /spe/ledger/faucet-keypair.json \
+                  --allow-unfunded-recipient $address $2 2>&1); then
+      echo "Funding failed: $result"
+      exit 1
+    fi
+
+    result=$(echo "$result" | tr -d '\r' | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2};?)?)?[mGK]//g")
+    signature=${result#*Signature: }
+    echo "Funded $1 with $2 SOL. Signature: $signature"
+    echo "Check in explorer: http://localhost:${EXPLORER_PORT}/tx/$signature"
+    ;;
+
+  help)
+    display_help
+    ;;
+
+  *)
+    echo "Invalid subcommand: $subcommand"
+    display_help
+    exit 1
+    ;;
+esac

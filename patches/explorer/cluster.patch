@@ -1,0 +1,93 @@
+From 88f5c222a19c983fae1c950cc3612d6bbc53a31c Mon Sep 17 00:00:00 2001
+From: Hendrik Hofstadt <hendrik@bool.capital>
+Date: Sun, 18 Feb 2024 10:19:46 +0100
+Subject: [PATCH] reduce cluster options to SPE
+
+---
+ app/providers/cluster.tsx                  |  5 ++++-
+ app/providers/stats/SolanaPingProvider.tsx |  2 +-
+ app/utils/cluster.ts                       | 11 +++++++++--
+ 3 files changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/app/providers/cluster.tsx b/app/providers/cluster.tsx
+index deef8a2..04bcc6b 100644
+--- a/app/providers/cluster.tsx
++++ b/app/providers/cluster.tsx
+@@ -59,9 +59,12 @@ function parseQuery(searchParams: ReadonlyURLSearchParams | null): Cluster {
+             return Cluster.Devnet;
+         case 'testnet':
+             return Cluster.Testnet;
++        case 'localspe':
++            return Cluster.SPE;
+         case 'mainnet-beta':
+-        default:
+             return Cluster.MainnetBeta;
++        default:
++            return Cluster.SPE;
+     }
+ }
+
+diff --git a/app/providers/stats/SolanaPingProvider.tsx b/app/providers/stats/SolanaPingProvider.tsx
+index 76b2682..6d5df04 100644
+--- a/app/providers/stats/SolanaPingProvider.tsx
++++ b/app/providers/stats/SolanaPingProvider.tsx
+@@ -12,7 +12,7 @@ const FETCH_PING_INTERVAL = 60 * 1000;
+ function getPingUrl(cluster: Cluster) {
+     const slug = clusterSlug(cluster);
+
+-    if (slug === 'custom') {
++    if (slug === 'custom' || slug === 'localspe') {
+         return undefined;
+     }
+
+diff --git a/app/utils/cluster.ts b/app/utils/cluster.ts
+index f30963f..734f121 100644
+--- a/app/utils/cluster.ts
++++ b/app/utils/cluster.ts
+@@ -8,10 +8,11 @@ export enum Cluster {
+     MainnetBeta,
+     Testnet,
+     Devnet,
++    SPE,
+     Custom,
+ }
+
+-export const CLUSTERS = [Cluster.MainnetBeta, Cluster.Testnet, Cluster.Devnet, Cluster.Custom];
++export const CLUSTERS = [Cluster.SPE, Cluster.Custom];
+
+ export function clusterSlug(cluster: Cluster): string {
+     switch (cluster) {
+@@ -21,6 +22,8 @@ export function clusterSlug(cluster: Cluster): string {
+             return 'testnet';
+         case Cluster.Devnet:
+             return 'devnet';
++        case Cluster.SPE:
++            return 'localspe';
+         case Cluster.Custom:
+             return 'custom';
+     }
+@@ -34,6 +37,8 @@ export function clusterName(cluster: Cluster): string {
+             return 'Testnet';
+         case Cluster.Devnet:
+             return 'Devnet';
++        case Cluster.SPE:
++            return 'Local SPE';
+         case Cluster.Custom:
+             return 'Custom';
+     }
+@@ -59,9 +64,11 @@ export function clusterUrl(cluster: Cluster, customUrl: string): string {
+             return process.env.NEXT_PUBLIC_MAINNET_RPC_URL ?? modifyUrl(MAINNET_BETA_URL);
+         case Cluster.Testnet:
+             return process.env.NEXT_PUBLIC_TESTNET_RPC_URL ?? modifyUrl(TESTNET_URL);
++        case Cluster.SPE:
++            return "http://localhost:8899";
+         case Cluster.Custom:
+             return customUrl;
+     }
+ }
+
+-export const DEFAULT_CLUSTER = Cluster.MainnetBeta;
++export const DEFAULT_CLUSTER = Cluster.SPE;
+--
+2.42.0
+
