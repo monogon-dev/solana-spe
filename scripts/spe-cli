@@ -1,2 +1,2 @@
-#! /bin/sh
+#!/usr/bin/env bash
 docker run --net=host --rm -it -v ${SPE_ROOT}:/spe -v $(pwd):/opt --workdir /opt --entrypoint solana solanalabs/solana:${SOLANA_VERSION} --config /spe/config/config.yml "$@"

@@ -1,4 +1,4 @@
-#!bash
+#!/usr/bin/env bash
 set -o pipefail
 
 # Array for subcommand descriptions
